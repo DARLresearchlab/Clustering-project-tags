@@ -1,6 +1,6 @@
 ## Hierarchical Tag Construction Methodology
 
-This project builds a multi-level hierarchy of tags based on their co-occurrence patterns across projects. The hierarchy is derived entirely from network structure and community detection, without relying on arbitrary thresholds or manual labeling.
+This project builds a multi-level hierarchy of tags based on their co-occurrence patterns across projects. The hierarchy is derived entirely from network structure and community detection.
 
 ---
 

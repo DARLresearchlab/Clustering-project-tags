@@ -53,7 +53,7 @@ The algorithm tracks the lineage of every tag throughout the peeling process.
 - *Infra* peeled at Level 1 with ID `01`
 - *Layer 1* peeled at Level 2 with ID `03`
 
-A project containing both would receive the hierarchy code:01030000
+A project containing only these two tags would receive the hierarchy code:01030000
 
 ---
 

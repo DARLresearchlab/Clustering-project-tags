@@ -69,4 +69,3 @@ Temporal or repeated concepts (e.g., treatments across different time periods) a
 
 ---
 
-This approach ensures that the resulting tag hierarchy is **data-driven, scalable, and interpretable**, while remaining flexible enough to capture both structural and temporal variation.

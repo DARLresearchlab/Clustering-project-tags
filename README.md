@@ -23,7 +23,7 @@ Instead of arbitrarily selecting a fixed number of top tags, we apply the **Louv
 
 - **Modularity Optimization**: Louvain identifies groups of tags that are more densely connected to each other than to the rest of the network.
 - **Objective Root Selection**: Within each detected community (e.g., an *Infrastructure* cluster), the tag with the highest weighted degree is designated as the **Level 1 parent**.
-- **Result**: The data naturally decomposes into multiple independent communities. In our case, this process resulted in **9 distinct hierarchies**, each with its own Level 1 root tag.
+- **Result**: The data naturally decomposes into multiple independent communities. In our case, this process resulted in **8 distinct hierarchies**, each with its own Level 1 root tag.
 
 ---
 

@@ -1,0 +1,174 @@
+import pandas as pd
+import networkx as nx
+import community as community_louvain
+from collections import defaultdict
+import os
+from scipy.sparse.csgraph import structural_rank
+
+# --- CONFIGURATION ---
+INPUT_FILE = 'your input file path here'
+OUTPUT_FOLDER = '/Users/w.wei/FinTech Research/'
+MAX_DEPTH = 4  # Results in an 8-digit code (2 digits per level)
+
+# --- UTILITY FUNCTIONS ---
+
+def is_separable(subgraph):
+    """
+    Uses structural rank (DM Logic) to check if the group of tags 
+    is a cohesive block or can be decomposed further.
+    """
+    if len(subgraph.nodes) < 2:
+        return False
+    adj = nx.to_scipy_sparse_array(subgraph)
+    return structural_rank(adj) < len(subgraph.nodes)
+
+def get_most_specific_code(codes):
+    """
+    Returns the code with the most non-zero pairs (the deepest level).
+    """
+    def depth_score(code):
+        return sum(1 for i in range(0, len(code), 2) if code[i:i+2] != '00')
+    return max(codes, key=depth_score)
+
+def analyze_taxonomy_codes(csv_path):
+    """
+    Analyzes the uniqueness and distribution of generated codes.
+    """
+    if not os.path.exists(csv_path):
+        print(f"Error: Could not find file at {csv_path}")
+        return
+    df = pd.read_csv(csv_path, dtype={'code': str})
+    unique_codes_count = df['code'].nunique()
+    tags_per_code = df['code'].value_counts()
+    
+    print(f"\n{'='*40}")
+    print(f"TAXONOMY SUMMARY")
+    print(f"{'='*40}")
+    print(f"File: {os.path.basename(csv_path)}")
+    print(f"Total Unique Codes Found: {unique_codes_count}")
+    print(f"Total Tags Processed:    {len(df)}")
+    print("-" * 40)
+    print("Code Distribution (Tags per Code):")
+    print(tags_per_code.describe())
+    print(f"{'='*40}\n")
+
+def export_for_r_visualization(G, output_folder):
+    """
+    Extracts edges from the networkx graph and saves them for R visualization.
+    """
+    edge_list = []
+    for u, v, data in G.edges(data=True):
+        edge_list.append({
+            'source': u,
+            'target': v,
+            'weight': data['weight']
+        })
+    output_path = os.path.join(output_folder, 'tag_edges.csv')
+    pd.DataFrame(edge_list).to_csv(output_path, index=False)
+    print(f"Success: Exported {len(edge_list)} edges to {output_path}")
+
+# --- MAIN TAXONOMY ENGINE ---
+
+def generate_fintech_taxonomy():
+    if not os.path.exists(OUTPUT_FOLDER):
+        os.makedirs(OUTPUT_FOLDER)
+        
+    # 1. Load Data
+    df = pd.read_csv(INPUT_FILE)
+    tag_cols = [c for c in df.columns if 'Level_' in c]
+    
+    G = nx.Graph()
+    project_list = []
+    
+    for _, row in df.iterrows():
+        tags = [str(row[col]).strip() for col in tag_cols if pd.notna(row[col]) and str(row[col]).strip() not in ['', 'nan', 'None']]
+        if not tags: continue
+        
+        project_list.append({'title': row['title'], 'tags': tags})
+        for i in range(len(tags)):
+            for j in range(i + 1, len(tags)):
+                w = G.get_edge_data(tags[i], tags[j], default={'weight': 0})['weight']
+                G.add_edge(tags[i], tags[j], weight=w + 1)
+
+    global_degrees = dict(G.degree(weight='weight'))
+    tag_to_code = {}
+
+    # 2. Recursive Tree Logic (Hierarchy Discovery)
+    def build_tree(nodes, prefix, current_level):
+        if not nodes or current_level > MAX_DEPTH:
+            return
+        sub = G.subgraph(nodes)
+        if not is_separable(sub) and current_level > 1:
+            for node in nodes:
+                if node not in tag_to_code:
+                    tag_to_code[node] = prefix + "01" + ("00" * (MAX_DEPTH - current_level))
+            return
+        try:
+            partition = community_louvain.best_partition(sub, weight='weight', random_state=42)
+        except:
+            partition = {node: 0 for node in nodes}
+        clusters = defaultdict(list)
+        for node, c_id in partition.items():
+            clusters[c_id].append(node)
+        sorted_c_ids = sorted(clusters.keys(), key=lambda k: sum(global_degrees[n] for n in clusters[k]), reverse=True)
+        for i, c_id in enumerate(sorted_c_ids, 1):
+            c_nodes = clusters[c_id]
+            cluster_code = f"{i:02d}"
+            new_prefix = prefix + cluster_code
+            sub_degrees = dict(G.subgraph(c_nodes).degree(weight='weight'))
+            hub = max(sub_degrees, key=sub_degrees.get)
+            tag_to_code[hub] = new_prefix + ("00" * (MAX_DEPTH - current_level))
+            remaining = [n for n in c_nodes if n != hub]
+            build_tree(remaining, new_prefix, current_level + 1)
+
+    build_tree(list(G.nodes()), "", 1)
+
+    # 3. Project Mapping (Primary Identity Logic)
+    final_projects = []
+    for proj in project_list:
+        valid_tags = [t for t in proj['tags'] if t in tag_to_code]
+        if not valid_tags: continue
+        clusters_found = defaultdict(list)
+        for t in valid_tags:
+            l1_prefix = tag_to_code[t][:2]
+            clusters_found[l1_prefix].append(t)
+        if len(clusters_found) == 1:
+            winning_tags = valid_tags
+        else:
+            cluster_importance = {p: sum(global_degrees[t] for t in ts) for p, ts in clusters_found.items()}
+            winning_prefix = max(cluster_importance, key=cluster_importance.get)
+            winning_tags = clusters_found[winning_prefix]
+        winning_codes = [tag_to_code[t] for t in winning_tags]
+        best_code = get_most_specific_code(winning_codes)
+        primary_tag = [t for t in winning_tags if tag_to_code[t] == best_code][0]
+        final_projects.append({
+            'title': proj['title'],
+            'naics_code': best_code,
+            'primary_tag': primary_tag,
+            'all_tags': ", ".join(proj['tags'])
+        })
+
+    # 4. Save CSV Files
+    res_df = pd.DataFrame(final_projects).sort_values('naics_code')
+    res_df.to_csv(os.path.join(OUTPUT_FOLDER, 'data_driven_results.csv'), index=False)
+    
+    key_path = os.path.join(OUTPUT_FOLDER, 'taxonomy_key.csv')
+    key_df = pd.DataFrame([{"tag": k, "code": v} for k, v in tag_to_code.items()]).sort_values('code')
+    key_df.to_csv(key_path, index=False)
+
+    # 5. NEW: Automated Reports and Exports
+    analyze_taxonomy_codes(key_path)
+    export_for_r_visualization(G, OUTPUT_FOLDER)
+
+    # Level 1 Report
+    print("\n" + "="*50)
+    print(f"{'LEVEL 1 HIERARCHY (MAJOR SECTORS)':^50}")
+    print("="*50)
+    l1_suffix = "00" * (MAX_DEPTH - 1)
+    l1_tags = [(v[:2], k) for k, v in tag_to_code.items() if v.endswith(l1_suffix) and v != "00" * MAX_DEPTH]
+    for code_id, tag_name in sorted(l1_tags):
+        print(f"Group {code_id}: {tag_name}")
+    print("="*50 + "\n")
+
+if __name__ == "__main__":
+    generate_fintech_taxonomy()

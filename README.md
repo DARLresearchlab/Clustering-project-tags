@@ -22,6 +22,16 @@ The **weighted degree** of a tag is defined as the sum of all edge weights conne
 Instead of arbitrarily selecting a fixed number of top tags, we apply the **Louvain community detection algorithm** to the full tag network.
 
 - **Modularity Optimization**: Louvain identifies groups of tags that are more densely connected to each other than to the rest of the network.
+- ### Modularity Formula
+The Louvain algorithm optimizes for **Modularity ($Q$)**, which measures the density of connections within communities compared to a random distribution:
+
+$$Q = \frac{1}{2m} \sum_{ij} [A_{ij} - \frac{k_i k_j}{2m}] \delta(c_i, c_j)$$
+
+Where:
+* $A_{ij}$: The actual weight of the connection between Tag $i$ and Tag $j$.
+* $k_i, k_j$: The sums of the weights of the edges attached to nodes $i$ and $j$ respectively.
+* $m$: The total weight of all edges in the network.
+* $\delta(c_i, c_j)$: The Kronecker delta function (1 if $i$ and $j$ are in the same community, 0 otherwise).
 - **Objective Root Selection**: Within each detected community (e.g., an *Infrastructure* cluster), the tag with the highest weighted degree is designated as the **Level 1 parent**.
 - **Result**: The data naturally decomposes into multiple independent communities. In our case, this process resulted in **8 distinct hierarchies**, each with its own Level 1 root tag.
 

@@ -56,14 +56,3 @@ The algorithm tracks the lineage of every tag throughout the peeling process.
 A project containing only these two tags would receive the hierarchy code:01030000
 
 ---
-
-### Step 5: Handling Temporal or Repetitive Tags
-
-Temporal or repeated concepts (e.g., treatments across different time periods) are treated as distinct tags.
-
-- Tags such as *Treatment A (Q1)* and *Treatment A (Q2)* are modeled independently.
-- If these tags exhibit different co-occurrence patterns, the algorithm will naturally place them in different sub-clusters or hierarchy levels.
-- This preserves time-sensitive structure without requiring manual temporal ordering or rules.
-
----
-

@@ -6,7 +6,7 @@ import os
 from scipy.sparse.csgraph import structural_rank
 
 INPUT_FILE = 'your input file path here'
-OUTPUT_FOLDER = '/Users/w.wei/FinTech Research/'
+OUTPUT_FOLDER = 'the path to output file folder'
 MAX_DEPTH = 4  # Results in an 8-digit code (2 digits per level)
 
 

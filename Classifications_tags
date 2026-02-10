@@ -5,12 +5,10 @@ from collections import defaultdict
 import os
 from scipy.sparse.csgraph import structural_rank
 
-# --- CONFIGURATION ---
 INPUT_FILE = 'your input file path here'
 OUTPUT_FOLDER = '/Users/w.wei/FinTech Research/'
 MAX_DEPTH = 4  # Results in an 8-digit code (2 digits per level)
 
-# --- UTILITY FUNCTIONS ---
 
 def is_separable(subgraph):
     """
@@ -67,7 +65,6 @@ def export_for_r_visualization(G, output_folder):
     pd.DataFrame(edge_list).to_csv(output_path, index=False)
     print(f"Success: Exported {len(edge_list)} edges to {output_path}")
 
-# --- MAIN TAXONOMY ENGINE ---
 
 def generate_fintech_taxonomy():
     if not os.path.exists(OUTPUT_FOLDER):

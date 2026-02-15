@@ -1,67 +1,128 @@
-## Hierarchical Tag Construction Methodology
+# Hierarchical Tag Taxonomy Generator
 
-This project builds a multi-level hierarchy of tags based on their co-occurrence patterns across projects. 
----
+This project implements a **data-driven algorithm** to transform flat, co-occurring tags into a structured, multi-level hierarchy (similar to **NAICS** or **SIC** codes).
 
-### Step 1: Compute the Weighted Degree of Tags
-
-We first construct a weighted network of tags, where:
-- Nodes represent tags
-- Edge weights represent how frequently two tags co-occur across projects
-
-The **weighted degree** of a tag is defined as the sum of all edge weights connected to that tag.
-
-- **Example**: If *DeFi* appears across 50 projects alongside many other tags, while *Staking* appears in only 5 projects, *DeFi* will have a much higher weighted degree.
-- **Significance**: Tags with the highest weighted degrees across the entire network are considered the most influential. These tags are selected as **Level 1 root tags**, as they act as primary hubs of information flow.
+Instead of manual categorization, the system leverages **Network Science** and **Community Detection** to allow the data itself to define semantic structure and relationships.
 
 ---
 
-### Step 2: Global Community Detection (Louvain Method)
+## Algorithm Workflow
 
-Instead of arbitrarily selecting a fixed number of top tags, we apply the **Louvain community detection algorithm** to the full tag network.
+The classification pipeline consists of **five phases**, progressing from raw tag co-occurrence to a final **8-digit hierarchical taxonomy code**.
 
-- **Modularity Optimization**: Louvain identifies groups of tags that are more densely connected to each other than to the rest of the network.
-- ### Modularity Formula
-The Louvain algorithm optimizes for **Modularity ($Q$)**, which measures the density of connections within communities compared to a random distribution:
+---
 
-$$Q = \frac{1}{2m} \sum_{ij} [A_{ij} - \frac{k_i k_j}{2m}] \delta(c_i, c_j)$$
+### Phase 1: Co-occurrence Network Construction
+
+The dataset is modeled as a **weighted undirected graph**:
+
+\[
+G = (V, E)
+\]
+
+- **Nodes (V)**: Every unique tag in the dataset  
+- **Edges (E)**: An edge exists between two tags if they appear together in the same project  
+- **Weights (W)**: Edge weight equals the frequency of tag co-occurrence  
+
+This representation captures both tag relationships and their relative strength.
+
+---
+
+### Phase 2: Community Detection via Louvain Method
+
+To identify **Major Sectors (Level 1)**, we apply the **Louvain community detection algorithm**, which optimizes for **Modularity (Q)**.
+
+#### Modularity Formula
+
+\[
+Q = \frac{1}{2m} \sum_{ij} \left[ A_{ij} - \frac{k_i k_j}{2m} \right] \delta(c_i, c_j)
+\]
 
 Where:
-* $A_{ij}$: The actual weight of the connection between Tag $i$ and Tag $j$.
-* $k_i, k_j$: The sums of the weights of the edges attached to nodes $i$ and $j$ respectively.
-* $m$: The total weight of all edges in the network.
-* $\delta(c_i, c_j)$: The Kronecker delta function (1 if $i$ and $j$ are in the same community, 0 otherwise).
-- **Objective Root Selection**: Within each detected community (e.g., an *Infrastructure* cluster), the tag with the highest weighted degree is designated as the **Level 1 parent**.
-- **Result**: The data naturally decomposes into multiple independent communities. In our case, this process resulted in **8 distinct hierarchies**, each with its own Level 1 root tag.
+- `A_ij`: Weight of the edge between tag *i* and *j*
+- `k_i, k_j`: Sum of edge weights connected to nodes *i* and *j*
+- `m`: Total weight of all edges in the network
+- `δ(c_i, c_j)`: 1 if tags belong to the same community, 0 otherwise
+
+**Outcome**:  
+Tags naturally group into organic clusters (e.g., *DeFi*, *Infrastructure*) without any manual rules.
 
 ---
 
-### Step 3: Iterative “Peeling” and Re-Clustering
+### Phase 3: Recursive “Hub Peeling”
 
-Once Level 1 root tags are identified, we iteratively extract deeper levels of the hierarchy through a peeling process.
+Once a community is identified, hierarchical structure is extracted through an iterative **peeling process**:
 
-1. **Remove**: All Level 1 root tags are temporarily removed from the network.
-2. **Re-Cluster**: The remaining tags are re-analyzed without dominant root tags overshadowing smaller structures.
-3. **Recalculate Degrees**: Weighted degrees are recomputed for the reduced network.
-4. **Assign Level 2**: The highest-degree tags within the new sub-communities are assigned as **Level 2 parents**.
+1. **Identify the Hub**  
+   - The tag with the highest **weighted degree** is selected as the parent for that level.
+2. **Assign Code**  
+   - The hub receives a new 2-digit identifier (e.g., `01`).
+3. **Peel & Re-cluster**  
+   - The hub is removed from the cluster.
+   - Remaining tags are re-clustered to identify sub-hubs.
 
-This process is repeated iteratively to uncover deeper hierarchical layers.
+> This ensures that general concepts (e.g., *Layer 1*) are not overshadowed by highly frequent tags (e.g., *Ethereum*).
 
 ---
 
-### Step 4: Lineage Tracking and Hierarchy Recombination
+### Phase 4: Termination via Structural Rank (DM Logic)
 
-The algorithm tracks the lineage of every tag throughout the peeling process.
+To prevent overfitting artificial hierarchies in small or tightly connected groups, recursion is terminated using **Structural Rank**, based on **Dulmage–Mendelsohn decomposition**.
 
-- **Sequence Tracking**: Each tag is assigned:
-  - A **Level** (iteration number at which it was peeled)
-  - An **ID** (its rank within that level)
-- **Hierarchy Encoding**: These identifiers are concatenated to form a fixed-length hierarchical code.
+- The function `is_separable` evaluates the adjacency matrix of the tag subgraph.
+- **Stopping Condition**:
+  
+  \[
+  \text{rank}(\text{Adj}) < |V|
+  \]
+
+If the condition holds, the group is considered a cohesive block that cannot be meaningfully decomposed further.
+
+**Result**:  
+Remaining tags are assigned to the current hierarchy level, and recursion stops.
+
+---
+
+### Phase 5: Project Mapping & Primary Identity Assignment
+
+Because projects often contain multiple tags, the algorithm assigns each project a single **Primary Identity**.
+
+- **Cluster Vote**  
+  - All project tags vote for their Level 1 cluster.
+  - Votes are weighted by global tag degree.
+- **Winning Cluster**  
+  - The cluster with the highest total vote share is selected.
+- **Specificity Rule**  
+  - The tag with the deepest hierarchy (most non-zero digit pairs) is chosen.
+- **Final Code**  
+  - The project inherits the tag’s full 8-digit taxonomy code.
 
 **Example**:
-- *Infra* peeled at Level 1 with ID `01`
-- *Layer 1* peeled at Level 2 with ID `03`
+01030200
 
-A project containing only these two tags would receive the hierarchy code:01030000
+---
+
+## Taxonomy Code Structure
+
+Each taxonomy code consists of **8 digits**, where every 2 digits represent a deeper hierarchical level.
+
+| Code       | Level | Meaning               | Example              |
+|------------|-------|-----------------------|----------------------|
+| 01000000   | 1     | Major Sector (Hub)    | DeFi                 |
+| 01030000   | 2     | Sub-Sector            | Lending              |
+| 01030200   | 3     | Niche                 | Undercollateralized  |
+| 01030201   | 4     | Specific Detail       | Flash Loans          |
+
+---
+
+## How to Run
+
+1. Set `INPUT_FILE`  
+   - CSV containing project titles and tags (`Level_1`, `Level_2`, etc.)
+2. Define `OUTPUT_FOLDER`
+3. Run:
+```bash
+python taxonomy_generator.py
+
 
 

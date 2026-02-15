@@ -73,15 +73,7 @@ The method alternates between two stages:
 - Edge weights are aggregated  
 - Local movement repeats on reduced graph  
 
-Implementation:
-
-```python
-partition = community_louvain.best_partition(
-    sub,
-    weight="weight",
-    random_state=42
-)
-```
+Implementation:python  partition = community_louvain.best_partition(sub, weight="weight", random_state=42)
 
 **Why Louvain?**
 

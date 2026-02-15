@@ -34,9 +34,7 @@ To identify **Major Sectors (Level 1)**, we apply the **Louvain community detect
 
 #### Modularity Formula
 
-\[
-Q = \frac{1}{2m} \sum_{ij} \left[ A_{ij} - \frac{k_i k_j}{2m} \right] \delta(c_i, c_j)
-\]
+$$Q = \frac{1}{2m} \sum_{ij} [A_{ij} - \frac{k_i k_j}{2m}] \delta(c_i, c_j)$$
 
 Where:
 - `A_ij`: Weight of the edge between tag *i* and *j*

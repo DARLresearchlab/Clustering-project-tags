@@ -50,6 +50,39 @@ Tags naturally partition into coherent, high-level clusters (e.g., *DeFi*, *Infr
 
 ---
 
+#### How Louvain Works in This Implementation
+
+In this system, the Louvain method is used as a **greedy, data-driven mechanism** to discover macro-level structure directly from tag co-occurrence patterns.
+
+At a high level, Louvain operates through two repeating internal stages:
+
+1. **Local Movement Phase**  
+   - Each tag initially forms its own community.
+   - Tags are repeatedly moved between neighboring communities if the move increases global modularity.
+   - Because edge weights represent co-occurrence frequency, tags that frequently appear together exert stronger “pull” toward the same community.
+
+2. **Community Aggregation Phase**  
+   - Once no further local improvements are possible, each detected community is collapsed into a “super-node.”
+   - Edge weights between communities are aggregated.
+   - The local movement phase is repeated on this reduced graph.
+
+These two stages iterate until modularity can no longer be improved.
+
+In the code, this process is executed via:
+
+```python
+partition = community_louvain.best_partition(sub, weight='weight', random_state=42)
+
+**Why Louvain Is Appropriate Here**
+   - Tags frequently co-occur across many projects → strong intra-community density
+   - Cross-domain tags remain connected but do not dominate clustering
+   - No predefined number of sectors is required
+   - Structure adapts naturally as new data is added
+
+As a result, Level-1 communities correspond to emergent functional or economic sectors, rather than manually imposed categories
+
+---
+
 ### Phase 3: Recursive “Hub Peeling”
 
 Once Level 1 communities are identified, hierarchical depth is extracted through an iterative **hub peeling** process.

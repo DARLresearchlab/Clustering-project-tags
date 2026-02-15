@@ -70,9 +70,8 @@ To prevent overfitting artificial hierarchies in small or tightly connected grou
 - The function `is_separable` evaluates the adjacency matrix of the tag subgraph.
 - **Stopping Condition**:
   
-  \[
-  \text{rank}(\text{Adj}) < |V|
-  \]
+ rank(Adj) < |V|
+
 
 If the condition holds, the group is considered a cohesive block that cannot be meaningfully decomposed further.
 

@@ -68,9 +68,7 @@ Once a community is identified, hierarchical structure is extracted through an i
 To prevent overfitting artificial hierarchies in small or tightly connected groups, recursion is terminated using **Structural Rank**, based on **Dulmage–Mendelsohn decomposition**.
 
 - The function `is_separable` evaluates the adjacency matrix of the tag subgraph.
-- **Stopping Condition**:
-  
- rank(Adj) < |V|
+- **Stopping Condition**: rank(Adj) < |V|
 
 
 If the condition holds, the group is considered a cohesive block that cannot be meaningfully decomposed further.
